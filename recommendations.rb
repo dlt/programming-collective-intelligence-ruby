@@ -120,7 +120,6 @@ class Recommendations
 		rankings
 	end
 
-
 	def transform_prefs(prefs)
 		result = Hash.new
 		prefs.keys.each do |person|
@@ -131,7 +130,27 @@ class Recommendations
 		end
 		result
 	end
-	
+
+	def load_movie_lens(path = '../movielens/ml-data/')
+		movies = {} 
+		File.open(path + 'u.item').each_line do |line|
+			id, item = line.split('|')[0, 2]
+			movies[id.to_i] = item
+		end
+
+		prefs = {} 
+		File.open(path + 'u.data').each_line do |line|
+			userid, movieid, rating = line.split(/\t/)[0, 3]
+			userid, movieid, rating = userid.to_i, movieid.to_i, rating.to_f
+
+			prefs[userid.to_i] ||= {}
+			movie_name = uniq_symbol movies[movieid]
+			prefs[userid][movie_name] = rating
+		end
+
+		return prefs
+	end
+
 	private
 	def euclidean_distance(*coordinates)
     Raise 'Wrong number of coordinates' if coordinates.size % 2 != 0
@@ -170,6 +189,10 @@ class Recommendations
 		
 		d1xd2  = d3.sum
 		return d1xd2 / (Math.sqrt(d1_squares_sum) * Math.sqrt(d2_squares_sum))
+	end
+
+	def uniq_symbol(name)
+		name.downcase.gsub(/,|\s/,'_').gsub(/\'|\(|\)|\.|\:/,'').to_sym
 	end
 
   def common_preferences(prefs, person1, person2)
