@@ -144,7 +144,7 @@ class Recommendations
 			userid, movieid, rating = userid.to_i, movieid.to_i, rating.to_f
 
 			prefs[userid.to_i] ||= {}
-			movie_name = uniq_symbol movies[movieid]
+			movie_name = uniq_symbol(movies[movieid])
 			prefs[userid][movie_name] = rating
 		end
 
@@ -192,7 +192,7 @@ class Recommendations
 	end
 
 	def uniq_symbol(name)
-		name.downcase.gsub(/,|\s/,'_').gsub(/\'|\(|\)|\.|\:/,'').to_sym
+		name.downcase.gsub(/[,\s']/,'_').gsub(/[().:!?]/,'').to_sym
 	end
 
   def common_preferences(prefs, person1, person2)
