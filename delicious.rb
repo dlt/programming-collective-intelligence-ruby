@@ -14,8 +14,8 @@ class DeliciousRecommender
 		fill_items(@user_hash, tag)
 	end
 
-	def get_popular(options)
-		hash = self.class.get('/popular')
+	def get_popular(tag)
+		hash = self.class.get("/popular/#{tag ? tag : ''}")
 		hash['rss']['channel']['item']
 	end
 
