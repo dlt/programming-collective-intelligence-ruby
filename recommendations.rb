@@ -66,7 +66,6 @@ class Recommendations
 		rankings = totals.keys.collect do |pref|
 			[totals[pref] / sim_sums[pref], pref]
 		end
-
 		rankings.sort_by {|r| r[0] }.reverse
 	end
 
@@ -189,6 +188,11 @@ class Recommendations
 		
 		d1xd2  = d3.sum
 		return d1xd2 / (Math.sqrt(d1_squares_sum) * Math.sqrt(d2_squares_sum))
+	end
+	
+	def tanimoto(a, b)
+		c = (a & b)
+		c.size / (a.size + b.size - c.size)
 	end
 
 	def uniq_symbol(name)
