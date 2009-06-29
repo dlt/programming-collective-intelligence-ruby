@@ -190,6 +190,7 @@ class Recommendations
 		return d1xd2 / (Math.sqrt(d1_squares_sum) * Math.sqrt(d2_squares_sum))
 	end
 	
+
 	def tanimoto(a, b)
 		c = (a & b)
 		c.size / (a.size + b.size - c.size)
