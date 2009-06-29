@@ -13,7 +13,7 @@ class DeliciousRecommender
 	end
 
 	def get_tagurls(*tags)
-		count = 20
+		count = 10
 		hash = self.class.get("/tag/#{tags.join('+')}?count=#{count}")
 		handle_response hash
 	end
@@ -37,22 +37,29 @@ class DeliciousRecommender
 		handle_response hash
 	end
 
-	def get_recommendations(user, tag, search_for = :user, similarity = :sim_distance)
-		recommender = Recommendations.new
+	def get_recommendations(tag, user = nil, search_for = :user, similarity = :sim_distance)
 		if search_for == :user
-			return user_recommendations(user, tag, similarity)
+      Raise 'Have to provide user param.' unless user
+			user_recommendations(user, tag, similarity)
 		elsif search_for == :tag
+      tag_recommendations(tag, similarity)
 		end
 	end
 	
 	private
 	def user_recommendations(user, tag, similarity)
 		user_hash = initialize_user_hash(user, tag)
-		fill_items(user_hash, tag) {|user, search_tag| get_userposts(user, search_tag, 2) } 
+		fill_items(user_hash) {|user| get_userposts(user, tag, 10) } 
 		@recommender.get_recommendations(user_hash, user, similarity)
 	end
 
-	def initialize_tag_hash(tag, count = 1)
+	def tag_recommendations(tag, similarity, count = 10)
+		tag_hash = init_tag_hash(tag, count)
+    fill_tag_items(tag_hash)
+    @recommender.get_recommendations(tag_hash, tag, :sim_distance)
+	end
+
+	def init_tag_hash(tag, count = 10)
 		categories = [tag]
 		get_popular(tag, count).each do |post|
 			categs = post['category']
@@ -75,26 +82,29 @@ class DeliciousRecommender
     join_all
 		init_hash_with_keys(creators)
 	end
+  
+  def fill_tag_items(hash)
+    copy = hash.dup
+    copy.each_key do |tag|
+      popular_posts = get_popular(tag)
+      popular_posts.each do |post|
+        url = post['link']
+        top_tags = get_urlinfo(url)['top_tags']
+        hash[url] = top_tags
+      end
+    end
+    hash
+  end
 
-	def tag_recommendations(tag, count = 10)
-		tag_hash = initialize_tag_hash(tag, count)
-
-	end
-
-	def fill_items(hash, search_key)
-		all_items = {}
+	def fill_items(hash, extract = 'link')
+		all_items = []
 		hash.each_key do |item|
       Thread.new do
-        if block_given?
-          posts = yield(item, search_key)
-        else
-          posts = get_userposts(item, search_key)
-        end
-
+        posts = yield(item)
         posts.each do |post|
-          url = post['link']
-          hash[item][url] = 1.0
-          all_items[url] = 1
+          value = post[extract]
+          hash[item][value] = 1.0
+          all_items << value
         end
       end
 		end
