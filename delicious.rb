@@ -11,15 +11,16 @@ class DeliciousRecommender
     set_handlers
 	end
 
-	def user_recommendations(user, tag, similarity, count = 10)
+	def user_recommendations(user, tag, similarity = :sim_pearson, count = 10)
 		user_hash = initialize_user_hash(user, tag)
 		fill_items(user_hash) {|user| @api.get_userposts(user, tag, count) } 
 		@recommender.get_recommendations(user_hash, user, similarity)
 	end
 
-	def tag_recommendations(tag, similarity, count = 10)
+	def tag_recommendations(tag, similarity = :sim_pearson, count = 10)
     tag_hash = init_tag_hash(tag, count)
     fill_tag_items(tag_hash)
+    tag_hash = @recommender.transform_prefs tag_hash
     @recommender.get_recommendations(tag_hash, tag, similarity)
 	end
 
