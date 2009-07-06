@@ -101,7 +101,7 @@ class Recommendations
 		total_sim = Hash.new 0
 
 		user_ratings.each do |item, rating|
-			item_match[item].each do |item2, similarity|
+			item_match[item].each do |similarity, item2|
 				next if user_ratings.include?(item2)
 
 				# Weighted sum of rating times similarity
