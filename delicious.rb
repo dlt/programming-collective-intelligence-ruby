@@ -2,12 +2,13 @@ require 'rubygems'
 require 'httparty'
 require 'digest/md5' 
 require 'recommendations.rb'
+require '../rublicious/rublicious.rb'
 
 class DeliciousRecommender
 
 	def initialize
 		@recommender = Recommendations.new
-    @api = DeliciousAPI.new
+    @api = Rubilicious::Feeds.new
     set_handlers
 	end
 
@@ -26,7 +27,7 @@ class DeliciousRecommender
 
 	private
   def set_handlers
-    @api.xml_client.response_handler = Proc.new do |response|
+    @api.xml_client.add_response_handler do |response|
       response = response['rss']['channel']['item']
       # if returned 1 or 0 items in the response, makes it look like an array
       response = [response] if response.is_a? Hash 
@@ -49,7 +50,8 @@ class DeliciousRecommender
 
 	def initialize_user_hash(user, tag, count = 5)
 		creators = [user]
-		@api.get_popular(tag, count).each do |post|
+		
+    @api.get_popular(tag, count).each do |post|
       Thread.new do
 				@api.get_urlposts(post['link']).each do |post2|
 					creator = post2['dc:creator']
@@ -57,6 +59,7 @@ class DeliciousRecommender
 				end
       end
 		end
+
     join_all
 		init_hash_with_keys(creators)
 	end
@@ -75,6 +78,7 @@ class DeliciousRecommender
         end
       end
     end
+
     join_all
     hash
   end
@@ -91,6 +95,7 @@ class DeliciousRecommender
         end
       end
 		end
+
     join_all
 
 		hash.each_pair do |key, ratings|
@@ -109,82 +114,4 @@ class DeliciousRecommender
   def join_all
     Thread.list.each {|t| t.join unless t == Thread.current || t == Thread.main }
   end
-end
-
-
-class DeliciousAPI
-  attr_reader :xml_client, :json_client
-
-  def initialize
-    @xml_client  = XMLClient.new
-    @json_client = JSONClient.new
-  end
-
-  alias old_method_missing method_missing
-
-  def method_missing(meth, *args)
-    return @xml_client.send(meth, *args) if @xml_client.respond_to? meth
-    return @json_client.send(meth, *args) if @json_client.respond_to? meth 
-    
-    old_method_missing meth, *args
-  end
-end
-
-class Client
-  attr_accessor :response_handler
-
-	def get(*params)
-		self.class.get(*params)
-	end
-
-	def query_string(tag, count)
-		query = '' 
-		query << '/' + tag if tag
-		query << "?count=#{count}"
-		query
-	end
-
-	def handle_response(response)
-    if @response_handler
-      response = @response_handler.call(response)
-    end
-    response
-	end
-end
-
-class XMLClient < Client
-	include HTTParty
-	base_uri 'http://feeds.delicious.com/v2/xml'
-	format :xml
-
-	def get_tagurls(*tags)
-		count = 10
-		hash = get("/tag/#{tags.join('+')}?count=#{count}")
-		handle_response hash
-	end
-
-	def get_popular(tag = nil, count = 5)
-		hash = get("/popular#{query_string(tag, count)}")
-		handle_response hash
-	end
-
-	def get_userposts(user, tag = nil, count = 15)
-		hash = get("/#{user}/#{query_string(tag, count)}")
-		handle_response hash
-	end
-
-	def get_urlposts(url)
-		hash = get("/url/#{Digest::MD5.hexdigest(url)}")
-		handle_response hash
-	end
-end
-
-class JSONClient < Client
-	include HTTParty
-	base_uri 'http://feeds.delicious.com/v2/json'
-  format :json
-
-	def get_urlinfo(url)
-		get("/urlinfo/#{Digest::MD5.hexdigest(url)}").first #will always return one result
-	end
 end
