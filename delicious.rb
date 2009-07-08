@@ -8,7 +8,7 @@ class DeliciousRecommender
 
 	def initialize
 		@recommender = Recommendations.new
-    @api = Rubilicious::Feeds.new
+    @api 				 = Rublicious::Feeds.new
     set_handlers
 	end
 
@@ -40,7 +40,7 @@ class DeliciousRecommender
 		categories = [tag]
 
 		@api.get_popular(tag, count).each do |post|
-			categs = post['category']
+			categs = post.category
 			categs = [categs] unless categs.is_a? Array
 			categories += categs
 		end
@@ -53,8 +53,8 @@ class DeliciousRecommender
 		
     @api.get_popular(tag, count).each do |post|
       Thread.new do
-				@api.get_urlposts(post['link']).each do |post2|
-					creator = post2['dc:creator']
+				@api.get_urlposts(post.link).each do |post2|
+					creator = post2.dc_creator
 					creators << creator
 				end
       end
@@ -70,9 +70,8 @@ class DeliciousRecommender
       Thread.new do 
         popular_posts = @api.get_popular(tag)
         popular_posts.each do |post|
-          url = post['link']
           Thread.new do
-            top_tags = @api.get_urlinfo(url)['top_tags']
+            top_tags = @api.get_urlinfo(post.link).top_tags
             hash[url] = top_tags
           end
         end
