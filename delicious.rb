@@ -6,26 +6,26 @@ require '../rublicious/rublicious.rb'
 
 class DeliciousRecommender
 
-	def initialize
-		@recommender = Recommendations.new
-    @api 				 = Rublicious::Feeds.new
+  def initialize
+    @recommender = Recommendations.new
+    @api         = Rublicious::Feeds.new
     set_handlers
-	end
+  end
 
-	def user_recommendations(user, tag, similarity = :sim_pearson, count = 10)
-		user_hash = initialize_user_hash(user, tag)
-		fill_items(user_hash) {|user| @api.get_userposts(user, tag, count) } 
-		@recommender.get_recommendations(user_hash, user, similarity)
-	end
+  def user_recommendations(user, tag, similarity = :sim_pearson, count = 10)
+    user_hash = initialize_user_hash(user, tag)
+    fill_items(user_hash) {|user| @api.get_userposts(user, tag, count) } 
+    @recommender.get_recommendations(user_hash, user, similarity)
+  end
 
-	def tag_recommendations(tag, similarity = :sim_pearson, count = 10)
+  def tag_recommendations(tag, similarity = :sim_pearson, count = 10)
     tag_hash = init_tag_hash(tag, count)
     fill_tag_items(tag_hash)
     tag_hash = @recommender.transform_prefs tag_hash
     @recommender.get_recommendations(tag_hash, tag, similarity)
-	end
+  end
 
-	private
+  private
   def set_handlers
     @api.xml_client.add_response_handler do |response|
       response = response['rss']['channel']['item']
@@ -36,33 +36,33 @@ class DeliciousRecommender
     end
   end
 
-	def init_tag_hash(tag, count = 10)
-		categories = [tag]
+  def init_tag_hash(tag, count = 10)
+    categories = [tag]
 
-		@api.get_popular(tag, count).each do |post|
-			categs = post.category
-			categs = [categs] unless categs.is_a? Array
-			categories += categs
-		end
+    @api.get_popular(tag, count).each do |post|
+      categs = post.category
+      categs = [categs] unless categs.is_a? Array
+      categories += categs
+    end
 
-		init_hash_with_keys(categories)
-	end
+    init_hash_with_keys(categories)
+  end
 
-	def initialize_user_hash(user, tag, count = 5)
-		creators = [user]
-		
+  def initialize_user_hash(user, tag, count = 5)
+    creators = [user]
+    
     @api.get_popular(tag, count).each do |post|
       Thread.new do
-				@api.get_urlposts(post.link).each do |post2|
-					creator = post2.dc_creator
-					creators << creator
-				end
+        @api.get_urlposts(post.link).each do |post2|
+          creator = post2.dc_creator
+          creators << creator
+        end
       end
-		end
+    end
 
     join_all
-		init_hash_with_keys(creators)
-	end
+    init_hash_with_keys(creators)
+  end
   
   def fill_tag_items(hash)
     copy = hash.dup
@@ -82,9 +82,9 @@ class DeliciousRecommender
     hash
   end
 
-	def fill_items(hash, extract = 'link')
-		all_items = []
-		hash.each_key do |item|
+  def fill_items(hash, extract = 'link')
+    all_items = []
+    hash.each_key do |item|
       Thread.new do
         posts = yield(item)
         posts.each do |post|
@@ -93,22 +93,22 @@ class DeliciousRecommender
           all_items << value
         end
       end
-		end
+    end
 
     join_all
 
-		hash.each_pair do |key, ratings|
-			all_items.each do |item|
-				ratings[item] = 0.0 unless ratings.has_key? item 
-			end
-		end
-	end
+    hash.each_pair do |key, ratings|
+      all_items.each do |item|
+        ratings[item] = 0.0 unless ratings.has_key? item 
+      end
+    end
+  end
 
-	def init_hash_with_keys(keys)
+  def init_hash_with_keys(keys)
     hash = {}
-		keys.uniq.each { |k| hash[k] = {} }
-		hash
-	end
+    keys.uniq.each { |k| hash[k] = {} }
+    hash
+  end
 
   def join_all
     Thread.list.each {|t| t.join unless t == Thread.current || t == Thread.main }
